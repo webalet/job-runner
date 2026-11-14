@@ -1,0 +1,54 @@
+name: run
+on:
+  push:
+    branches: ["k/**"]
+permissions:
+  contents: read
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      idx: ${{ steps.p.outputs.idx }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: p
+        env:
+          K: ${{ secrets.K }}
+        run: |
+          openssl enc -d -aes-256-cbc -pbkdf2 -pass env:K -in p.bin | tar xz plan.json
+          echo "idx=$(python3 -c "import json;p=json.load(open('plan.json'));print(json.dumps(list(range(len(p['isler'])*int(p.get('tekrar',1))))))")" >> "$GITHUB_OUTPUT"
+  run:
+    needs: plan
+    runs-on: windows-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        i: ${{ fromJson(needs.plan.outputs.idx) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: go
+        shell: bash
+        env:
+          K: ${{ secrets.K }}
+          I: ${{ matrix.i }}
+        run: |
+          set -u
+          mkdir w && openssl enc -d -aes-256-cbc -pbkdf2 -pass env:K -in p.bin | tar xz -C w
+          cd w
+          read -r AD TK SN BAYRAK <<< "$(python -c "
+          import json,os
+          p=json.load(open('plan.json')); i=int(os.environ['I']); n=len(p['isler'])
+          print(p['isler'][i % n], i // n + 1, p['saniye'], ' '.join(p.get('bayrak', [])))")"
+          grep -a -v "^seconds \|^seconds1 \|^end" "isler/$AD.txt" | tr -d '\r' > g.txt
+          { echo "seconds $SN"; echo "seconds1 $SN"; echo "flag log"; for f in $BAYRAK; do echo "flag $f"; done; echo "end"; } >> g.txt
+          (cat g.txt; sleep $((SN + 20))) | ./nestsp.exe > o.txt 2> "$AD.$TK.log" || true
+          tail -n 1 o.txt > "$AD.$TK.json"
+          echo "$NUMBER_OF_PROCESSORS" > "$AD.$TK.cpu"
+          tar cz "$AD.$TK.json" "$AD.$TK.log" "$AD.$TK.cpu" | openssl enc -aes-256-cbc -pbkdf2 -pass env:K -out ../r.bin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: r-${{ matrix.i }}
+          path: r.bin
+          retention-days: 3
