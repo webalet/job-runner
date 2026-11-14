@@ -37,12 +37,12 @@ jobs:
           set -u
           mkdir w && openssl enc -d -aes-256-cbc -pbkdf2 -pass env:K -in p.bin | tar xz -C w
           cd w
-          read -r AD TK SN BAYRAK <<< "$(python -c "
+          read -r AD TK SN CEK BAYRAK <<< "$(python -c "
           import json,os
           p=json.load(open('plan.json')); i=int(os.environ['I']); n=len(p['isler'])
-          print(p['isler'][i % n], i // n + 1, p['saniye'], ' '.join(p.get('bayrak', [])))")"
-          grep -a -v "^seconds \|^seconds1 \|^end" "isler/$AD.txt" | tr -d '\r' > g.txt
-          { echo "seconds $SN"; echo "seconds1 $SN"; echo "flag log"; for f in $BAYRAK; do echo "flag $f"; done; echo "end"; } >> g.txt
+          print(p['isler'][i % n], i // n + 1, p['saniye'], int(p.get('cekirdek', 0)), ' '.join(p.get('bayrak', [])))")"
+          grep -a -v "^seconds \|^seconds1 \|^end\|^threads " "isler/$AD.txt" | tr -d '\r' > g.txt
+          { if [ "$CEK" != 0 ]; then echo "threads $CEK"; fi; echo "seconds $SN"; echo "seconds1 $SN"; echo "flag log"; for f in $BAYRAK; do echo "flag $f"; done; echo "end"; } >> g.txt
           (cat g.txt; sleep $((SN + 20))) | ./nestsp.exe > o.txt 2> "$AD.$TK.log" || true
           tail -n 1 o.txt > "$AD.$TK.json"
           echo "$NUMBER_OF_PROCESSORS" > "$AD.$TK.cpu"
