@@ -44,7 +44,7 @@ jobs:
           grep -a -v "^seconds \|^seconds1 \|^end\|^threads " "isler/$AD.txt" | tr -d '\r' > g.txt
           { if [ "$CEK" != 0 ]; then echo "threads $CEK"; fi; echo "seconds $SN"; echo "seconds1 $SN"; echo "flag log"; for f in $BAYRAK; do echo "flag $f"; done; echo "end"; } >> g.txt
           (cat g.txt; sleep $((SN + 20))) | ./nestsp.exe > o.txt 2> "$AD.$TK.log" || true
-          tail -n 1 o.txt > "$AD.$TK.json"
+          { grep -a "^{\"t\":\"done\"" o.txt || cat o.txt; } | tail -n 1 > "$AD.$TK.json" # done sonrasi tick gelebilir: son done satiri alinir
           echo "$NUMBER_OF_PROCESSORS" > "$AD.$TK.cpu"
           tar cz "$AD.$TK.json" "$AD.$TK.log" "$AD.$TK.cpu" | openssl enc -aes-256-cbc -pbkdf2 -pass env:K -out ../r.bin
       - uses: actions/upload-artifact@v4
