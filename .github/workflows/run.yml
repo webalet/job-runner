@@ -41,10 +41,15 @@ jobs:
           import json,os
           p=json.load(open('plan.json')); i=int(os.environ['I']); n=len(p['isler'])
           print(p['isler'][i % n], i // n + 1, p['saniye'], int(p.get('cekirdek', 0)), ' '.join(p.get('bayrak', [])))")"
+          if [ -f saf.exe ]; then # ikinci kol: paket nestsp yerine saf.exe + saf.mjs; tohum = tekrar no, son satir done bicimi
+          SAF_EXE=saf.exe node saf.mjs "isler/$AD.txt" s "$SN" "$TK" > o.txt 2> "$AD.$TK.log" || true
+          tail -n 1 o.txt > "$AD.$TK.json"; cat output/log.txt >> "$AD.$TK.log" 2>/dev/null || true
+          else
           grep -a -v "^seconds \|^seconds1 \|^end\|^threads " "isler/$AD.txt" | tr -d '\r' > g.txt
           { if [ "$CEK" != 0 ]; then echo "threads $CEK"; fi; echo "seconds $SN"; echo "seconds1 $SN"; echo "flag log"; for f in $BAYRAK; do echo "flag $f"; done; echo "end"; } >> g.txt
           (cat g.txt; sleep $((SN + 20))) | ./nestsp.exe > o.txt 2> "$AD.$TK.log" || true
           { grep -a "^{\"t\":\"done\"" o.txt || cat o.txt; } | tail -n 1 > "$AD.$TK.json" # done sonrasi tick gelebilir: son done satiri alinir
+          fi
           echo "$NUMBER_OF_PROCESSORS" > "$AD.$TK.cpu"
           tar cz "$AD.$TK.json" "$AD.$TK.log" "$AD.$TK.cpu" | openssl enc -aes-256-cbc -pbkdf2 -pass env:K -out ../r.bin
       - uses: actions/upload-artifact@v7
